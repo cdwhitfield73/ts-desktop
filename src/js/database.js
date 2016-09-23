@@ -53,28 +53,17 @@ function DataManager(db, resourceDir, apiURL) {
         },
 
         validateSource: function (source) {
-            var mythis = this;
             var lang = source.language_id;
             var proj = source.project_id;
             var res = source.resource_id;
-            var container = lang + "_" + proj + "_" + res;
-            var zipname = container + ".tsrc";
-            var manifest = path.join(resourceDir, container, "package.json");
 
-            return utils.fs.stat(path.join(resourceDir, zipname)).then(utils.ret(true)).catch(utils.ret(false))
-                .then(function (exists) {
-                    if (exists) {
-                        return mythis.openContainer(lang, proj, res)
-                            .then(function () {
-                                return utils.fs.readFile(manifest);
-                            })
-                            .then(function (contents) {
-                                var json = JSON.parse(contents);
-                                source.uptodate = json.resource.status.pub_date === source.date_modified;
-                                return source;
-                            });
-                    }
-
+            return db.openResourceContainer(lang, proj, res)
+                .then(function(container) {
+                    source.uptodate = container.info.resource.status.pub_date === source.date_modified;
+                    return source;
+                })
+                .catch(function(err) {
+                    // the container does not exist
                     source.uptodate = false;
                     return source;
                 });
